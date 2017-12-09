@@ -12,15 +12,18 @@ import ARKit
 class ViewController: UIViewController, ARSCNViewDelegate, SCNPhysicsContactDelegate {
 
     @IBOutlet weak var sceneView: ARSCNView!
-   
+    let debug = true
+    
     @IBAction func touch(_ sender: Any) {
         let bulletsNode = Projectile()
-        bulletsNode.position = SCNVector3(0, 0, -0.2) // SceneKit/AR coordinates are in meters
         
-        let bulletDirection = self.getUserDirection()
+        let (direction, position) = self.getUserDirection()
+        
+        bulletsNode.position = position
+        let bulletDirection = direction
+        
         bulletsNode.physicsBody?.applyForce(bulletDirection, asImpulse: true)
         sceneView.scene.rootNode.addChildNode(bulletsNode)
-        addNewTarget()
     }
     
     override func viewDidLoad() {
@@ -33,6 +36,16 @@ class ViewController: UIViewController, ARSCNViewDelegate, SCNPhysicsContactDele
         sceneView.scene = scene
         sceneView.scene.physicsWorld.contactDelegate = self
         
+        addNewTarget()
+        addNewTarget()
+        debugMode()
+    }
+    
+    func debugMode(){
+        if (debug){
+            self.sceneView.debugOptions = [ARSCNDebugOptions.showFeaturePoints]
+            self.sceneView.debugOptions = [ARSCNDebugOptions.showWorldOrigin]
+        }
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -40,14 +53,14 @@ class ViewController: UIViewController, ARSCNViewDelegate, SCNPhysicsContactDele
         let configuration = ARWorldTrackingConfiguration()
         configuration.planeDetection = ARWorldTrackingConfiguration.PlaneDetection.horizontal
         sceneView.session.run(configuration)
-        
     }
     
     func addNewTarget(){
         let cubeNode = Target()
-        let x_pos = randomFloat(-0.5, and: 0.5)
-        let y_pos = randomFloat(-0.5, and: 0.5)
-        let z_pos = randomFloat(-0.5, and: 0.5)
+        let (_, position) = self.getUserDirection()
+        let x_pos = randomFloat(-0.5, and: 1.5) + position.x
+        let y_pos = randomFloat(-0.5, and: 1.5) + position.y
+        let z_pos = randomFloat(-0.5, and: 1.5) + position.z
         cubeNode.position = SCNVector3Make(x_pos, y_pos, z_pos)
         sceneView.scene.rootNode.addChildNode(cubeNode)
     }
@@ -56,20 +69,23 @@ class ViewController: UIViewController, ARSCNViewDelegate, SCNPhysicsContactDele
         return (Float(arc4random()) / Float(UInt32.max)) * (first - second) + second
     }
     
-    func getUserDirection() -> SCNVector3 {
+    func getUserDirection() -> (SCNVector3, SCNVector3) {
         if let frame = self.sceneView.session.currentFrame {
             let user_matrix = SCNMatrix4(frame.camera.transform)
-            return SCNVector3(-1 * user_matrix.m31, -1 * user_matrix.m32, -1 * user_matrix.m33)
+            let direction = SCNVector3(-1 * user_matrix.m31, -1 * user_matrix.m32, -1 * user_matrix.m33)
+            let position = SCNVector3(user_matrix.m41, user_matrix.m42, user_matrix.m43)
+            return (direction, position)
         }
-        return SCNVector3(0, 0, -1)
+        return (SCNVector3(0, 0, -1), SCNVector3(0, 0, -0.2))
     }
     
     func physicsWorld(_ world: SCNPhysicsWorld, didBegin contact: SCNPhysicsContact) {
-        contact.nodeA.removeFromParentNode()
-        contact.nodeB.removeFromParentNode()
+        DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(1), execute: {
+            contact.nodeA.removeFromParentNode()
+            contact.nodeB.removeFromParentNode()
+        })
         print("Big Baller!!")
         self.addNewTarget()
-        
     }
     
     override func didReceiveMemoryWarning() {

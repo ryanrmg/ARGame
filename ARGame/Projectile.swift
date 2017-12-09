@@ -14,13 +14,14 @@ class Projectile: SCNNode {
     
     override init(){
         super.init()
-        let sphere = SCNSphere(radius: 0.02)
+        let sphere = SCNSphere(radius: 0.05)
         self.geometry = sphere
         let physics_shape = SCNPhysicsShape(geometry: sphere, options: nil)
         self.physicsBody = SCNPhysicsBody(type: .dynamic, shape: physics_shape)
         self.physicsBody?.isAffectedByGravity = false
         self.physicsBody?.categoryBitMask = CollisionCategory.projectile.rawValue
         self.physicsBody?.contactTestBitMask = CollisionCategory.target.rawValue
+        self.physicsBody?.mass = 0.05
     }
     
     required init?(coder aDecoder: NSCoder) {
